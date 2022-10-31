@@ -1,46 +1,37 @@
 import ray
-import ray.util.collective as col
-import torch
+import cupy as cp
+
+import ray.util.collective as collective
 
 
-@ray.remote(num_cpus=1)
-class GPUWorker:
+@ray.remote(num_gpus=1)
+class Worker:
     def __init__(self):
-        self.gradients = torch.ones((10,), dtype=torch.float32)
+        self.send = cp.ones((4,), dtype=cp.float32)
+        self.recv = cp.zeros((4,), dtype=cp.float32)
 
     def setup(self, world_size, rank):
-       col.init_collective_group(
-           world_size=world_size, 
-           rank=rank, 
-           backend="nccl")
+        collective.init_collective_group(world_size, rank, "nccl", "default")
+        return True
 
-    def allreduce(self):
-        col.allreduce(self.gradients)
-        return self.gradients
+    def compute(self):
+        collective.allreduce(self.send, "default")
+        return self.send
 
+    def destroy(self):
+        collective.destroy_group()
 
-class AllReduceServer:
-    def __init__(self, num_workers=4, verbose=1):
-        self.num_workers = num_workers
-        self.verbose = verbose
-        self.workers = [GPUWorker.remote() for i in range(self.num_workers)]
-
-    def setup(self):
-        setup_rets = ray.get([w.setup(16, i) for i, w in enumerate(self.workers)])
-        if self.verbose:
-            print(setup_rets)
-
-    def allreduce_sync(self):
-        results = ray.get([w.allreduce.remote() for w in self.workers])
-        return results
-
-
-    def run(self):
-        results = self.allreduce_sync()
-        print(results)
-        
 
 if __name__ == "__main__":
-    server = AllReduceServer(num_workers=4)
-    server.setup()
-    server.run()
+    send = cp.ones((4,), dtype=cp.float32)
+    ray.init(num_gpus=1)
+    num_workers = 1
+    workers = []
+    init_rets = []
+    for i in range(num_workers):
+        w = Worker.remote()
+        workers.append(w)
+        init_rets.append(w.setup.remote(num_workers, i))
+    _ = ray.get(init_rets)
+    results = ray.get([w.compute.remote() for w in workers])
+    ray.shutdown()

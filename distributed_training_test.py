@@ -14,6 +14,8 @@ import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
+from ray.air import session
+
 
 from powersgd import PowerSGD, Config, optimizer_step
 
@@ -25,7 +27,8 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
         data, target = data, target
         output = model(data)
         loss = criterion(output, target)
-        loss.backward()
+        with model.no_sync():
+            loss.backward()
         optimizer_step(optimizer, powersgd)
         if batch_idx % 100 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -58,7 +61,6 @@ def train_func(config: Dict):
     epochs = config["epochs"]
 
     worker_batch_size = batch_size // train.world_size()
-
     
     transform = transforms.Compose(
     [transforms.ToTensor(),

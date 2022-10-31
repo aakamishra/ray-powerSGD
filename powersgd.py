@@ -54,6 +54,7 @@ def allreduce_average(data, *args, **kwargs):
     """All-reduce average if torch.distributed is available, otherwise do nothing"""
     if is_distributed():
         data.div_(torch.distributed.get_world_size())  # type: ignore
+        #print("pytorch world size: ", torch.distributed.get_world_size())
         return torch.distributed.all_reduce(data, *args, **kwargs)  # type: ignore
     else:
         return SimpleNamespace(wait=lambda: None)

@@ -15,6 +15,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from ray.air import session
+import time
 
 
 from powersgd import PowerSGD, Config, optimizer_step
@@ -27,10 +28,13 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
         data, target = data, target
         output = model(data)
         loss = criterion(output, target)
+
+        start = time.time_ns()
         with model.no_sync():
             loss.backward()
         optimizer_step(optimizer, powersgd)
         if batch_idx % 100 == 0:
+            print('minibatch time: ', time.time_ns() - start)
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
@@ -117,7 +121,7 @@ def train_resnet50_cifar(num_workers=4, use_gpu=True):
         config={
             "lr": 1e-3,
             "batch_size": 128,
-            "epochs": 4
+            "epochs": 10
         },
         callbacks=[JsonLoggerCallback()])
     trainer.shutdown()

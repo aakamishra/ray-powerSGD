@@ -2,9 +2,15 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 from typing import Dict, List, Tuple, NamedTuple, Union
 from types import SimpleNamespace
-
 import torch
 
+
+"""243 Group implementation of PowerSGD"""
+# Original code implementation can be found here: https://github.com/epfml/powersgd
+
+
+
+############################# UTLITIES ###################################
 
 def orthogonalize(matrix: torch.Tensor, eps=torch.tensor(1e-16)):
     if matrix.shape[-1] == 1:
@@ -50,6 +56,8 @@ def flatten(tensors: List[List[torch.Tensor]]) -> List[torch.Tensor]:
     return out
 
 
+########################## ALL-REDUCE PyTorch Integration ###############################
+
 def allreduce_average(data, *args, **kwargs):
     """All-reduce average if torch.distributed is available, otherwise do nothing"""
     if is_distributed():
@@ -87,6 +95,9 @@ class Config(NamedTuple):
     min_compression_rate: float = 2  # skip compression on some gradients
     num_iters_per_step: int = 1  # lower number => more aggressive compression
     start_compressing_after_num_steps: int = 100
+
+
+############################## PowerSGD Main ###################################
 
 
 class PowerSGD(Aggregator):

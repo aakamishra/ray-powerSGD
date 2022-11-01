@@ -6,7 +6,10 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 
-from powersgd import PowerSGD, Config, optimizer_step
+from raypowersgd.powersgd import PowerSGD, Config, optimizer_step
+
+
+###### RESNET-50 Integration Test File
 
 def train(model, device, train_loader, optimizer, powersgd, epoch, criterion):
     model.train()

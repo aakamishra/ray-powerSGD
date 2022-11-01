@@ -18,11 +18,14 @@ from ray.air import session
 import time
 
 
-from powersgd import PowerSGD, Config, optimizer_step
+from raypowersgd.powersgd import PowerSGD, Config, optimizer_step
 
 
 
 def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
+    """
+    Function for running gradient batched - compressed training cycle
+    """
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data, target
@@ -41,6 +44,9 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
 
 
 def rtest(model, test_loader):
+    """
+    simple test function for cifar accuracy counts
+    """
     model.eval()
     correct = 0
     total = 0
@@ -60,6 +66,11 @@ def rtest(model, test_loader):
 
 
 def train_func(config: Dict):
+    """
+    Distributed worker function for ray trainer loop
+    """
+
+    # load config values
     batch_size = config["batch_size"]
     lr = config["lr"]
     epochs = config["epochs"]

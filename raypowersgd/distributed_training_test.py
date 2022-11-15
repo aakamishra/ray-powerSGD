@@ -98,7 +98,7 @@ def train_func(config: Dict):
     classes = ('plane', 'car', 'bird', 'cat',
             'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-    model = torchvision.models.resnet50(pretrained=True)
+    model = torchvision.models.resnet50(pretrained=False)
     model = train.torch.prepare_model(model)
 
     params = model.parameters()

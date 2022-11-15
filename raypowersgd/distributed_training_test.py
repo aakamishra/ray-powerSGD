@@ -18,7 +18,7 @@ from ray.air import session
 import time
 
 
-from raypowersgd.powersgd import PowerSGD, Config, optimizer_step
+from powersgd import PowerSGD, Config, optimizer_step
 
 
 

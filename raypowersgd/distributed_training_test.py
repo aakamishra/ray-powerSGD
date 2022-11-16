@@ -137,15 +137,18 @@ def convert_batch_to_numpy(batch):
     return {"image": images, "label": labels}
 
 
-def train_resnet50_cifar(num_workers=4, use_gpu=True):
-    
+def get_train_dataset():
     transform = transforms.Compose(
     [transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                             download=True, transform=transform)
+    return trainset
+
+def train_resnet50_cifar(num_workers=4, use_gpu=True):
+
     train_dataset: ray.data.Dataset = ray.data.read_datasource(
-        SimpleTorchDatasource(), dataset_factory=trainset
+        SimpleTorchDatasource(), dataset_factory=get_train_dataset
     )
     train_dataset = train_dataset.map_batches(convert_batch_to_numpy)
     print("Batches Converted")

@@ -401,14 +401,17 @@ def optimizer_step(optimizer: torch.optim.Optimizer, aggregator: Aggregator):
         p.grad = g
 
 
-def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
+def rtrain(model, trainset_shard, optimizer, powersgd, epoch, criterion, batch_size):
     """
     Function for running gradient batched - compressed training cycle
     """
     start = time.time_ns()
     model.train()
-    for batch_idx, (data, target) in enumerate(train_loader):
-        data, target = data, target
+    train_loader = trainset_shard.iter_torch_batches(
+            batch_size=batch_size,
+        )
+    for batch_idx, batch in enumerate(train_loader):
+        data, target = batch["image"], batch["label"]
         output = model(data)
         loss = criterion(output, target)
 
@@ -462,9 +465,7 @@ def train_func(config: Dict):
 
     trainset_shard = session.get_dataset_shard("train")
     
-    train_loader = trainset_shard.iter_torch_batches(
-            batch_size=config["batch_size"],
-        )
+    
     #train_loader = torch.utils.data.DataLoader(trainset_shard, batch_size=batch_size,
     #                                        shuffle=True, num_workers=2)
 
@@ -496,7 +497,7 @@ def train_func(config: Dict):
 
     for epoch in range(epochs):
         
-        rtrain(model, train_loader, optimizer, powersgd, epoch, criterion)
+        rtrain(model, trainset_shard, optimizer, powersgd, epoch, criterion, batch_size)
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
         session.report(accuracy=accuracy, checkpoint=checkpoint)

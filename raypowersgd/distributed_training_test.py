@@ -1,7 +1,10 @@
 import torch
 import ray.train as train
-from ray.train.trainer import Trainer
-from ray.train.callbacks import JsonLoggerCallback
+from ray.air.callbacks.wandb import WandbLoggerCallback
+from ray.train.torch import TorchTrainer, TorchCheckpoint
+from ray.data.datasource import SimpleTorchDatasource
+from ray.air.config import ScalingConfig, RunConfig
+from ray.train.torch import TorchCheckpoint
 from torch import nn
 from torch.utils.data import DataLoader
 from torchvision import datasets
@@ -14,8 +17,10 @@ import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from ray.air import session
+from ray.air import session, Checkpoint
 import time
+import numpy as np
+import ray
 
 
 from powersgd import PowerSGD, Config, optimizer_step
@@ -26,22 +31,21 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
     """
     Function for running gradient batched - compressed training cycle
     """
+    start = time.time_ns()
     model.train()
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data, target
         output = model(data)
         loss = criterion(output, target)
 
-        start = time.time_ns()
         with model.no_sync():
             loss.backward()
         optimizer_step(optimizer, powersgd)
         if batch_idx % 100 == 0:
-            print('minibatch time: ', time.time_ns() - start)
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
-
+    print('Epoch time: ', time.time_ns() - start)
 
 def rtest(model, test_loader):
     """
@@ -82,17 +86,20 @@ def train_func(config: Dict):
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
 
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                            download=True, transform=transform)
-    train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                            shuffle=True, num_workers=2)
+    trainset_shard = session.get_dataset_shard("train")
+    
+    train_loader = trainset_shard.iter_torch_batches(
+            batch_size=config["batch_size"],
+        )
+    #train_loader = torch.utils.data.DataLoader(trainset_shard, batch_size=batch_size,
+    #                                        shuffle=True, num_workers=2)
 
     testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                         download=True, transform=transform)
-    test_loader = torch.utils.data.DataLoader(testset, batch_size=4,
+    test_loader = torch.utils.data.DataLoader(testset, batch_size=worker_batch_size,
                                             shuffle=False, num_workers=2)
 
-    train_loader = train.torch.prepare_data_loader(train_loader)
+    #train_loader = train.torch.prepare_data_loader(train_loader)
     test_loader = train.torch.prepare_data_loader(test_loader)
 
     classes = ('plane', 'car', 'bird', 'cat',
@@ -117,40 +124,67 @@ def train_func(config: Dict):
         
         rtrain(model, train_loader, optimizer, powersgd, epoch, criterion)
         accuracy = rtest(model, test_loader)
-        train.report(accuracy=accuracy)
+        checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
+        session.report(accuracy=accuracy, checkpoint=checkpoint)
         accuracy_results.append(accuracy)
 
     return accuracy_results
 
 
+def convert_batch_to_numpy(batch):
+    images = np.array([image.numpy() for image, _ in batch])
+    labels = np.array([label for _, label in batch])
+    return {"image": images, "label": labels}
+
+
 def train_resnet50_cifar(num_workers=4, use_gpu=True):
-    trainer = Trainer(
-        backend="torch", num_workers=num_workers, use_gpu=use_gpu)
-    trainer.start()
-    result = trainer.run(
-        train_func=train_func,
-        config={
+    
+    transform = transforms.Compose(
+    [transforms.ToTensor(),
+     transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
+    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                            download=True, transform=transform)
+    train_dataset: ray.data.Dataset = ray.data.read_datasource(
+        SimpleTorchDatasource(), dataset_factory=trainset
+    )
+    train_dataset = train_dataset.map_batches(convert_batch_to_numpy)
+    print("Batches Converted")
+    scaling_config = ScalingConfig(num_workers=num_workers, use_gpu=use_gpu)
+    trainer = TorchTrainer(
+        train_loop_per_worker=train_func,
+        train_loop_config={
             "lr": 1e-3,
             "batch_size": 128,
             "epochs": 10
         },
-        callbacks=[JsonLoggerCallback()])
-    trainer.shutdown()
-    print(f"Loss results: {result}")
+        scaling_config=scaling_config,
+        datasets={"train": train_dataset},
+        run_config= RunConfig(
+            callbacks=[WandbLoggerCallback(
+            project="Gradient_Compression_Project",
+            api_key_file="wandb_key.txt",
+            log_config=True)]
+            )
+        )
+    
+    result = trainer.fit()
+    print(f"Last result: {result.metrics}")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    """
     parser.add_argument(
         "--address",
         required=False,
         type=str,
         help="the address to use for Ray")
+    """
     parser.add_argument(
         "--num-workers",
         "-n",
         type=int,
-        default=4,
+        default=2,
         help="Sets number of workers for training.")
     parser.add_argument(
         "--use-gpu",
@@ -161,7 +195,8 @@ if __name__ == "__main__":
     args, _ = parser.parse_known_args()
     print("args: ", args)
 
-    import ray
-    ray.init(address=args.address)
+    #ray.init(address=args.address, ignore_reinit_error=True)
+    ray.init(address=ray.services.get_node_ip_address() + ":6379", ignore_reinit_error=True, include_dashboard=False)
+    print("finished ray init")
     accs = train_resnet50_cifar(num_workers=args.num_workers, use_gpu=args.use_gpu)
     print(accs)

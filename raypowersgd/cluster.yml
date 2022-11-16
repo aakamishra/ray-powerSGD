@@ -3,7 +3,6 @@ cluster_name: gpu-docker
 
 # The maximum number of workers nodes to launch in addition to the head
 # node.
-min_workers: 2
 max_workers: 2
 
 # The autoscaler will scale up the cluster faster with higher upscaling speed.
@@ -57,7 +56,6 @@ auth:
 available_node_types:
     # GPU head node.
     ray.head.gpu:
-        # worker_image: rayproject/ray:latest-gpu   # use this one if you don't need ML dependencies, it's faster to pull
         # The node type's CPU and GPU resources are auto-detected based on AWS instance type.
         # If desired, you can override the autodetected CPU and GPU resources advertised to the autoscaler.
         # You can also set custom resources.
@@ -104,11 +102,13 @@ available_node_types:
             InstanceType: g4dn.xlarge
             ImageId: ami-06d64f6f0e8f07398 # Deep Learning AMI (Ubuntu) Version 30
             # Run workers on spot by default. Comment this out to use on-demand.
-            InstanceMarketOptions:
-                MarketType: spot
+            BlockDeviceMappings:
+                - DeviceName: /dev/sda1
+                  Ebs:
+                      VolumeSize: 100
                 # Additional options can be found in the boto docs, e.g.
-                #   SpotOptions:
-                #       MaxPrice: MAX_HOURLY_PRICE
+              #   SpotOptions:
+              #       MaxPrice: MAX_HOURLY_PRICE
             # Additional options in the boto docs.
 
 # Specify the node type of the head node (as configured above).
@@ -116,19 +116,16 @@ head_node_type: ray.head.gpu
 
 # Files or directories to copy to the head and worker nodes. The format is a
 # dictionary from REMOTE_PATH: LOCAL_PATH, e.g.
-file_mounts: {
-    "/ray-powerSGD/raypowersgd" : "/Users/amishra/ray-powerSGD/raypowersgd",
-#    "/path2/on/remote/machine": "/path2/on/local/machine",
-}
+file_mounts: {}
 
 # List of shell commands to run to set up nodes.
 # NOTE: rayproject/ray:latest has ray latest bundled
 setup_commands:
-    - conda install pytorch
-    - conda install -c pytorch torchvision
-    - pip install -U "ray[default]"
-    - pip install -U "ray[air]"
-    - conda install pillow=6.1
+    - conda install -y pytorch
+    - conda install -c pytorch -y torchvision
+    - conda install -y pillow=6.1
+    - conda install -c conda-forge -y wandb
+
     # - pip install -U "ray[default] @ https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-3.0.0.dev0-cp37-cp37m-manylinux2014_x86_64.whl"
 
 # Custom commands that will be run on the head node after common setup.
@@ -141,7 +138,7 @@ worker_setup_commands: []
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:
     - ray stop
-    - ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml
+    - ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml --node-ip-address=172.31.15.78
 
 # Command to start ray on worker nodes. You don't need to change this.
 worker_start_ray_commands:

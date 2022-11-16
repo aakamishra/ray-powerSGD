@@ -407,11 +407,13 @@ def rtrain(model, trainset_shard, optimizer, powersgd, epoch, criterion, batch_s
     """
     start = time.time_ns()
     model.train()
+    """
     train_loader = trainset_shard.iter_torch_batches(
             batch_size=batch_size,
         )
-    for batch_idx, batch in enumerate(train_loader):
-        data, target = batch["image"], batch["label"]
+    """
+    for batch_idx, (image, label) in enumerate(train_loader):
+        data, target = image, label
         output = model(data)
         loss = criterion(output, target)
 
@@ -465,9 +467,11 @@ def train_func(config: Dict):
 
     trainset_shard = session.get_dataset_shard("train")
     
+    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                            download=True, transform=transform)
     
-    #train_loader = torch.utils.data.DataLoader(trainset_shard, batch_size=batch_size,
-    #                                        shuffle=True, num_workers=2)
+    train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
+                                            shuffle=True, num_workers=2)
 
     testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                         download=True, transform=transform)
@@ -497,7 +501,7 @@ def train_func(config: Dict):
 
     for epoch in range(epochs):
         
-        rtrain(model, trainset_shard, optimizer, powersgd, epoch, criterion, batch_size)
+        rtrain(model, train_loader, optimizer, powersgd, epoch, criterion)
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
         session.report(accuracy=accuracy, checkpoint=checkpoint)

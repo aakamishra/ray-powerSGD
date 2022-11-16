@@ -3,6 +3,7 @@ cluster_name: gpu-docker
 
 # The maximum number of workers nodes to launch in addition to the head
 # node.
+min_workers: 2
 max_workers: 2
 
 # The autoscaler will scale up the cluster faster with higher upscaling speed.
@@ -31,6 +32,16 @@ provider:
     # Nodes will be launched in the first listed availability zone and will
     # be tried in the subsequent availability zones if launching fails.
     availability_zone: us-east-1a,us-east-1b
+
+    security_group:
+        GroupName: ray_client_security_group
+        IpPermissions:
+              - FromPort: 10001
+                ToPort: 10001
+                IpProtocol: TCP
+                IpRanges:
+                    # This will enable inbound access from ALL IPv4 addresses.
+                    - CidrIp: 0.0.0.0/0
 
 # How Ray will authenticate with newly launched nodes.
 auth:
@@ -117,6 +128,7 @@ setup_commands:
     - conda install -c pytorch torchvision
     - pip install -U "ray[default]"
     - pip install -U "ray[air]"
+    - conda install pillow=6.1
     # - pip install -U "ray[default] @ https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-3.0.0.dev0-cp37-cp37m-manylinux2014_x86_64.whl"
 
 # Custom commands that will be run on the head node after common setup.
@@ -124,11 +136,7 @@ head_setup_commands:
     - pip install boto3
 
 # Custom commands that will be run on worker nodes after common setup.
-worker_setup_commands:
-    - conda install pytorch
-    - conda install -c pytorch torchvision
-    - pip install -U "ray[default]"
-    - pip install -U "ray[air]"
+worker_setup_commands: []
 
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:

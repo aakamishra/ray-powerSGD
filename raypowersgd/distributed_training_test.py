@@ -401,7 +401,7 @@ def optimizer_step(optimizer: torch.optim.Optimizer, aggregator: Aggregator):
         p.grad = g
 
 
-def rtrain(model, trainset_shard, optimizer, powersgd, epoch, criterion, batch_size):
+def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
     """
     Function for running gradient batched - compressed training cycle
     """

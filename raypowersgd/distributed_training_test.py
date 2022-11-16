@@ -504,7 +504,8 @@ def train_func(config: Dict):
         rtrain(model, train_loader, optimizer, powersgd, epoch, criterion)
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
-        session.report(accuracy=accuracy, checkpoint=checkpoint)
+        metrics = {"accuracy": accuracy, 'epoch': epoch}
+        session.report(metrics, checkpoint=checkpoint)
         accuracy_results.append(accuracy)
 
     return accuracy_results

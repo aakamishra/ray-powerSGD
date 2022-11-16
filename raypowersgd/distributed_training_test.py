@@ -575,7 +575,7 @@ if __name__ == "__main__":
     print("args: ", args)
 
     #ray.init(address=args.address, ignore_reinit_error=True)
-    ray.init(address=ray.services.get_node_ip_address() + ":6379", ignore_reinit_error=True, include_dashboard=False)
+    ray.init(address="auto", ignore_reinit_error=True, include_dashboard=False)
     print("finished ray init")
     accs = train_resnet50_cifar(num_workers=args.num_workers, use_gpu=args.use_gpu)
     print(accs)

@@ -478,7 +478,7 @@ def train_func(config: Dict):
     test_loader = torch.utils.data.DataLoader(testset, batch_size=worker_batch_size,
                                             shuffle=False, num_workers=2)
 
-    #train_loader = train.torch.prepare_data_loader(train_loader)
+    train_loader = train.torch.prepare_data_loader(train_loader)
     test_loader = train.torch.prepare_data_loader(test_loader)
 
     classes = ('plane', 'car', 'bird', 'cat',

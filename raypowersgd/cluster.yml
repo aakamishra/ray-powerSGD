@@ -3,7 +3,7 @@ cluster_name: gpu-docker
 
 # The maximum number of workers nodes to launch in addition to the head
 # node.
-max_workers: 2
+max_workers: 3
 
 # The autoscaler will scale up the cluster faster with higher upscaling speed.
 # E.g., if the task requires adding more nodes then autoscaler will gradually
@@ -37,6 +37,12 @@ provider:
         IpPermissions:
               - FromPort: 10001
                 ToPort: 10001
+                IpProtocol: TCP
+                IpRanges:
+                    # This will enable inbound access from ALL IPv4 addresses.
+                    - CidrIp: 0.0.0.0/0
+              - FromPort: 6397
+                ToPort: 6397
                 IpProtocol: TCP
                 IpRanges:
                     # This will enable inbound access from ALL IPv4 addresses.
@@ -87,7 +93,7 @@ available_node_types:
         min_workers: 1
         # The maximum number of workers nodes of this type to launch.
         # This takes precedence over min_workers.
-        max_workers: 2
+        max_workers: 3
         # The node type's CPU and GPU resources are auto-detected based on AWS instance type.
         # If desired, you can override the autodetected CPU and GPU resources advertised to the autoscaler.
         # You can also set custom resources.
@@ -122,9 +128,13 @@ file_mounts: {}
 # NOTE: rayproject/ray:latest has ray latest bundled
 setup_commands:
     - conda install -y pytorch
+    - conda install -c conda-forge -y nccl
     - conda install -c pytorch -y torchvision
     - conda install -y pillow=6.1
     - conda install -c conda-forge -y wandb
+    - pip install cupy-cuda113
+    - pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2 --extra-index-url https://download.pytorch.org/whl/cu113
+    - git clone https://github.com/aakamishra/ray-powerSGD.git
 
     # - pip install -U "ray[default] @ https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-3.0.0.dev0-cp37-cp37m-manylinux2014_x86_64.whl"
 

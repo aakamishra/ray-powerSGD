@@ -110,7 +110,7 @@ class AllReduce(Aggregator):
             return []
         buffer, shapes = pack(gradients)
         allreduce_average(buffer)
-        #wandb.log({"Communication Bits": 8 * buffer.nelement() * buffer.element_size()})
+        wandb.log({"Communication Bits": 8 * buffer.nelement() * buffer.element_size()})
         out = unpack(buffer, shapes)
         for g in gradients:
             g.zero_()
@@ -509,7 +509,7 @@ def train_func(config: Dict):
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
         metrics = {"accuracy": accuracy, 'epoch': epoch, "time": stop_time}
-        wandb.log(metrics, checkpoint=checkpoint)
+        wandb.log(metrics)
         session.report(metrics, checkpoint=checkpoint)
         accuracy_results.append(accuracy)
 

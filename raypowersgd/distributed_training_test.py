@@ -89,6 +89,7 @@ def allreduce_average(data, *args, **kwargs):
     if is_distributed():
         data.div_(torch.distributed.get_world_size())  # type: ignore
         #print("pytorch world size: ", torch.distributed.get_world_size())
+        wandb.log({"Communication Bits": 8 * data.nelement() * data.element_size()})
         return torch.distributed.all_reduce(data, *args, **kwargs)  # type: ignore
     else:
         return SimpleNamespace(wait=lambda: None)
@@ -110,7 +111,6 @@ class AllReduce(Aggregator):
             return []
         buffer, shapes = pack(gradients)
         allreduce_average(buffer)
-        wandb.log({"Communication Bits": 8 * buffer.nelement() * buffer.element_size()})
         out = unpack(buffer, shapes)
         for g in gradients:
             g.zero_()
@@ -486,7 +486,7 @@ def train_func(config: Dict):
     classes = ('plane', 'car', 'bird', 'cat',
             'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-    model = torchvision.models.resnet50(pretrained=False)
+    model = torchvision.models.vgg19_bn()
     model = train.torch.prepare_model(model)
 
     params = model.parameters()

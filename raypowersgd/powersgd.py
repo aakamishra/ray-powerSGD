@@ -106,9 +106,12 @@ class PowerSGD(Aggregator):
     and only on parameters with strong compression.
     """
 
-    def __init__(self, params: List[torch.Tensor], config: Config):
+    def __init__(self, params: List[torch.Tensor], config: Config, device=None):
         self.config = config
-        self.device = list(params)[0].device
+        if device is not None:
+            self.device = device
+        else:
+            self.device = self.params[0].device
         self.is_compressed_mask = [self._should_compress(p.shape) for p in params]
 
         self.step_counter = 0

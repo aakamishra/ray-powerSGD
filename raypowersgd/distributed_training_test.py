@@ -419,9 +419,10 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
         output = model(data)
         loss = criterion(output, target)
 
-        with model.no_sync():
-            loss.backward()
-        optimizer_step(optimizer, powersgd)
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        
         if batch_idx % 100 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),

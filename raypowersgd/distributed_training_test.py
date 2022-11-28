@@ -111,7 +111,7 @@ class AllReduce(Aggregator):
             return []
         buffer, shapes = pack(gradients)
         allreduce_average(buffer)
-        #wandb.log({"Communication Bits": 8 * buffer.nelement() * buffer.element_size()})
+        wandb.log({"Communication Bits": 8 * buffer.nelement() * buffer.element_size()})
         out = unpack(buffer, shapes)
         for g in gradients:
             g.zero_()
@@ -450,11 +450,11 @@ def rtest(model, test_loader):
     print(f'Accuracy of the network on the 10000 test images: {100 * correct // total} %')
     return (100 * correct // total)
 
-@wandb_mixin
 def train_func(config: Dict):
     """
     Distributed worker function for ray trainer loop
     """
+    
 
     # load config values
     batch_size = config["batch_size"]
@@ -510,7 +510,7 @@ def train_func(config: Dict):
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
         metrics = {"accuracy": accuracy, 'epoch': epoch, "time": stop_time}
-        #wandb.log(metrics, checkpoint=checkpoint)
+        wandb.log(metrics, checkpoint=checkpoint)
         session.report(metrics, checkpoint=checkpoint)
         accuracy_results.append(accuracy)
 
@@ -588,6 +588,7 @@ if __name__ == "__main__":
 
     #ray.init(address=args.address, ignore_reinit_error=True)
     ray.init(address="auto", ignore_reinit_error=True, include_dashboard=False)
+    wandb.init()
     print("finished ray init")
     accs = train_resnet50_cifar(num_workers=args.num_workers, use_gpu=args.use_gpu)
     print(accs)

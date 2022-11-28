@@ -453,7 +453,6 @@ def train_func(config: Dict):
     """
     Distributed worker function for ray trainer loop
     """
-    setup
 
     # load config values
     batch_size = config["batch_size"]

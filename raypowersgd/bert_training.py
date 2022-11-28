@@ -5,7 +5,7 @@ from datasets import load_dataset, load_metric
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, AdamW, get_scheduler
 import torch
 from torch.utils.data import DataLoader
-from raypowersgd.powersgd import optimizer_step, PowerSGD, Config
+from powersgd import optimizer_step, PowerSGD, Config
 
 import ray
 import ray.train as train
@@ -79,24 +79,14 @@ def worker_train_func(config):
     batch_size = config["batch_size"]
     worker_batch_size = batch_size // train.world_size()
 
-    train_dataloader = DataLoader(small_train_set, shuffle=True, batch_size=batch_size, num_workers=2)
-    eval_dataloader = DataLoader(small_eval_set, shuffle=False, batch_size=worker_batch_size, num_workers=2)
+    train_dataloader = DataLoader(small_train_set, shuffle=True, batch_size=batch_size)
+    eval_dataloader = DataLoader(small_eval_set, shuffle=False, batch_size=worker_batch_size)
     train_dataloader = train.torch.prepare_data_loader(train_dataloader)
     eval_dataloader = train.torch.prepare_data_loader(eval_dataloader)
 
 
     model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased", num_labels=2)
     model = train.torch.prepare_model(model)
-
-
-    num_epochs = config["epochs"]
-    num_training_steps = num_epochs * len(train_dataloader)
-    lr_scheduler = get_scheduler(
-        "linear",
-        optimizer=optimizer,
-        num_warmup_steps=0,
-        num_training_steps=num_training_steps
-    )
 
 
     lr = config["lr"]
@@ -108,6 +98,15 @@ def worker_train_func(config):
         num_iters_per_step=2,  #   # lower number => more aggressive compression
         start_compressing_after_num_steps=0,
     ))
+
+    num_epochs = config["epochs"]
+    num_training_steps = num_epochs * len(train_dataloader)
+    lr_scheduler = get_scheduler(
+        "linear",
+        optimizer=optimizer,
+        num_warmup_steps=0,
+        num_training_steps=num_training_steps
+    )
 
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     model.to(device)

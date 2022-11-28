@@ -501,7 +501,7 @@ def train_func(config: Dict):
 
     accuracy_results = []
     os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"
-    wandb.init(project="powersgd-resnet-trial-3")
+    wandb.init(project="powersgd-resnet-trial-6")
     for epoch in range(epochs):
         
         start_time = time.time_ns()

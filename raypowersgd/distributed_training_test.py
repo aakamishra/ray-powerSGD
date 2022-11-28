@@ -426,6 +426,7 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
+            wandb.log({"train/epoch": epoch, "train/batch_idx": batch_idx, "train/loss": loss.item()})
     print('Epoch time: ', time.time_ns() - start)
 
 def rtest(model, test_loader):
@@ -492,7 +493,7 @@ def train_func(config: Dict):
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)    
     powersgd = PowerSGD(list(params), config=Config(
-        rank=1,  # lower rank => more aggressive compression
+        rank=2,  # lower rank => more aggressive compression
         min_compression_rate=10,  # don't compress gradients with less compression
         num_iters_per_step=2,  #   # lower number => more aggressive compression
         start_compressing_after_num_steps=0,
@@ -500,7 +501,7 @@ def train_func(config: Dict):
 
     accuracy_results = []
     os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"
-    wandb.init(project="powersgd-resnet-trial-2")
+    wandb.init(project="powersgd-resnet-trial-3")
     for epoch in range(epochs):
         
         start_time = time.time_ns()

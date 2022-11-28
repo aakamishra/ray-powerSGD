@@ -1,5 +1,5 @@
-import torch
 import wandb
+import os
 import ray.train as train
 from ray.air.callbacks.wandb import WandbLoggerCallback
 from ray.train.torch import TorchTrainer, TorchCheckpoint
@@ -499,7 +499,8 @@ def train_func(config: Dict):
     ))
 
     accuracy_results = []
-
+    os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"
+    wandb.init(project="powersgd-resnet-trial")
     for epoch in range(epochs):
         
         start_time = time.time_ns()
@@ -508,7 +509,7 @@ def train_func(config: Dict):
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
         metrics = {"accuracy": accuracy, 'epoch': epoch, "time": stop_time}
-        #wandb.log(metrics, checkpoint=checkpoint)
+        wandb.log(metrics, checkpoint=checkpoint)
         session.report(metrics, checkpoint=checkpoint)
         accuracy_results.append(accuracy)
 
@@ -547,11 +548,7 @@ def train_resnet50_cifar(num_workers=4, use_gpu=True):
         scaling_config=scaling_config,
         datasets={"train": train_dataset},
         run_config= RunConfig(
-            callbacks=[WandbLoggerCallback(
-            project="Gradient_Compression_Project",
-            api_key_file="wandb_key.txt",
-            log_config=True,
-            save_checkpoints=True)]
+            callbacks=[]
             )
         )
     

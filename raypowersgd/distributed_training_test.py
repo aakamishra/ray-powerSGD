@@ -543,7 +543,7 @@ def train_resnet50_cifar(num_workers=4, use_gpu=True):
         train_loop_config={
             "lr": 1e-3,
             "batch_size": 128,
-            "epochs": 10
+            "epochs": 20
         },
         scaling_config=scaling_config,
         datasets={"train": train_dataset},

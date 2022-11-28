@@ -1,4 +1,5 @@
 import torch
+import wandb
 import ray.train as train
 from ray.air.callbacks.wandb import WandbLoggerCallback
 from ray.train.torch import TorchTrainer, TorchCheckpoint
@@ -109,6 +110,7 @@ class AllReduce(Aggregator):
             return []
         buffer, shapes = pack(gradients)
         allreduce_average(buffer)
+        wandb.log({"Communication Bits": 8 * buffer.nelement() * buffer.element_size()})
         out = unpack(buffer, shapes)
         for g in gradients:
             g.zero_()
@@ -501,10 +503,13 @@ def train_func(config: Dict):
 
     for epoch in range(epochs):
         
+        start_time = time.time_ns()
         rtrain(model, train_loader, optimizer, powersgd, epoch, criterion)
+        stop_time = time.time_ns() - start_time
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
-        metrics = {"accuracy": accuracy, 'epoch': epoch}
+        metrics = {"accuracy": accuracy, 'epoch': epoch, "time": stop_time}
+        wandb.log(metrics, checkpoint=checkpoint)
         session.report(metrics, checkpoint=checkpoint)
         accuracy_results.append(accuracy)
 

@@ -173,11 +173,14 @@ class BasicConfig(NamedTuple):
 
 
 class BasicPowerSGD(Aggregator):
-    def __init__(self, params: List[torch.Tensor], config: BasicConfig):
+    def __init__(self, params: List[torch.Tensor], config: BasicConfig, device=None):
         # Configuration
         self.config = config
         self.params = list(params)
-        self.device = self.params[0].device
+        if device is not None:
+            self.device = device
+        else:
+            self.device = self.params[0].device
         self.dtype = self.params[0].dtype
         self.params_per_shape = self._matrices_per_shape(self.params)
 

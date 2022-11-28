@@ -85,8 +85,12 @@ def worker_train_func(config):
     eval_dataloader = train.torch.prepare_data_loader(eval_dataloader)
 
 
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+
     model = AutoModelForSequenceClassification.from_pretrained("bert-base-cased", num_labels=2)
     model = train.torch.prepare_model(model)
+    model.to(device)
 
 
     lr = config["lr"]
@@ -97,7 +101,7 @@ def worker_train_func(config):
         min_compression_rate=10,  # don't compress gradients with less compression
         num_iters_per_step=2,  #   # lower number => more aggressive compression
         start_compressing_after_num_steps=0,
-    ))
+    ), device=device)
 
     num_epochs = config["epochs"]
     num_training_steps = num_epochs * len(train_dataloader)
@@ -107,9 +111,6 @@ def worker_train_func(config):
         num_warmup_steps=0,
         num_training_steps=num_training_steps
     )
-
-    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    model.to(device)
 
 
     accuracy_results = []

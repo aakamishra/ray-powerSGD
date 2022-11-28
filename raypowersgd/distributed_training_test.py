@@ -500,7 +500,7 @@ def train_func(config: Dict):
 
     accuracy_results = []
     os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"
-    wandb.init(project="powersgd-resnet-trial")
+    wandb.init(project="powersgd-resnet-trial-1")
     for epoch in range(epochs):
         
         start_time = time.time_ns()
@@ -509,7 +509,7 @@ def train_func(config: Dict):
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
         metrics = {"accuracy": accuracy, 'epoch': epoch, "time": stop_time}
-        wandb.log(metrics)
+        wandb.log(metrics, step=epoch)
         session.report(metrics, checkpoint=checkpoint)
         accuracy_results.append(accuracy)
 

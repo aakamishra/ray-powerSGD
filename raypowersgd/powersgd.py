@@ -106,12 +106,9 @@ class PowerSGD(Aggregator):
     and only on parameters with strong compression.
     """
 
-    def __init__(self, params: List[torch.Tensor], config: Config, device=None):
+    def __init__(self, params: List[torch.Tensor], config: Config):
         self.config = config
-        if device is not None:
-            self.device = device
-        else:
-            self.device = self.params[0].device
+        self.device = list(params)[0].device
         self.is_compressed_mask = [self._should_compress(p.shape) for p in params]
 
         self.step_counter = 0
@@ -176,14 +173,11 @@ class BasicConfig(NamedTuple):
 
 
 class BasicPowerSGD(Aggregator):
-    def __init__(self, params: List[torch.Tensor], config: BasicConfig, device=None):
+    def __init__(self, params: List[torch.Tensor], config: BasicConfig):
         # Configuration
         self.config = config
         self.params = list(params)
-        if device is not None:
-            self.device = device
-        else:
-            self.device = self.params[0].device
+        self.device = self.params[0].device
         self.dtype = self.params[0].dtype
         self.params_per_shape = self._matrices_per_shape(self.params)
 
@@ -380,8 +374,3 @@ def optimizer_step(optimizer: torch.optim.Optimizer, aggregator: Aggregator):
     # Put back the error buffer as the parameter's gradient
     for (p, g) in zip(params, grads):
         p.grad = g
-
-
-
-
-

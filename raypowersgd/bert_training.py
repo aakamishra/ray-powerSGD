@@ -101,7 +101,7 @@ def worker_train_func(config):
         min_compression_rate=10,  # don't compress gradients with less compression
         num_iters_per_step=2,  #   # lower number => more aggressive compression
         start_compressing_after_num_steps=0,
-    ), device=device)
+    ))
 
     num_epochs = config["epochs"]
     num_training_steps = num_epochs * len(train_dataloader)
@@ -111,7 +111,6 @@ def worker_train_func(config):
         num_warmup_steps=0,
         num_training_steps=num_training_steps
     )
-
 
     accuracy_results = []
     # os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"

@@ -135,7 +135,6 @@ setup_commands:
     - pip install cupy-cuda113
     - pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2 --extra-index-url https://download.pytorch.org/whl/cu113
     - sudo apt install -y net-tools
-    - sudo apt install -y vim
     - git clone https://github.com/aakamishra/ray-powerSGD.git
 
     # - pip install -U "ray[default] @ https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-3.0.0.dev0-cp37-cp37m-manylinux2014_x86_64.whl"

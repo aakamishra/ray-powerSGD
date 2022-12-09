@@ -14,6 +14,7 @@ from typing import Dict
 import argparse
 import torchvision
 from torchvision import datasets, transforms
+from torchvision.models import resnet
 import torchvision.transforms as transforms
 import torch.nn as nn
 import torch.optim as optim
@@ -486,12 +487,15 @@ def train_func(config: Dict):
     classes = ('plane', 'car', 'bird', 'cat',
             'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-    model = torchvision.models.vgg19_bn()
+    resnet.model_urls["resnet50"] = "https://download.pytorch.org/models/resnet50-11ad3fa6.pth"
+
+    # Initialize the model using the legacy API
+    model = resnet.resnet50(pretrained=True)
     model = train.torch.prepare_model(model)
 
     params = model.parameters()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)    
+    optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, nesterov=True)    
     powersgd = PowerSGD(list(params), config=Config(
         rank=2,  # lower rank => more aggressive compression
         min_compression_rate=10,  # don't compress gradients with less compression
@@ -501,7 +505,7 @@ def train_func(config: Dict):
 
     accuracy_results = []
     os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"
-    wandb.init(project="powersgd-resnet-trial-6")
+    wandb.init(project="powersgd-resnet-v2-trial-10")
     for epoch in range(epochs):
         
         start_time = time.time_ns()

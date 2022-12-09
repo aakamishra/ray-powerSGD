@@ -89,9 +89,12 @@ def allreduce_average(data, *args, **kwargs):
     """All-reduce average if torch.distributed is available, otherwise do nothing"""
     if is_distributed():
         data.div_(torch.distributed.get_world_size())  # type: ignore
-        #print("pytorch world size: ", torch.distributed.get_world_size())
-        wandb.log({"Communication Bits": 8 * data.nelement() * data.element_size()})
-        return torch.distributed.all_reduce(data, *args, **kwargs)  # type: ignore
+        #print("pytorch world size: ", torch.distributed.get_world_size())        
+        start_time = time.time_ns()
+        ret = torch.distributed.all_reduce(data, *args, **kwargs)  # type: ignore
+        wandb.log({"Communication Bits": 8 * data.nelement() * data.element_size(), "All Reduce Time": time.time_ns() - start_time})
+        return ret
+        
     else:
         return SimpleNamespace(wait=lambda: None)
 
@@ -417,17 +420,32 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
     """
     for batch_idx, (image, label) in enumerate(train_loader):
         data, target = image, label
+        
+        model_pass_start_time = time.time_ns()
         output = model(data)
         loss = criterion(output, target)
+        model_total_time = time.time_ns() - model_pass_start_time
 
         with model.no_sync():
             loss.backward()
+        
+        optimizer_step_start = time.time_ns()
         optimizer_step(optimizer, powersgd)
+        optimizer_step_time = time.time_ns() - optimizer_step_start
+        
+        net_gpu_ratio = wandb.run.summary["All Reduce Time"] / model_total_time
+        
         if batch_idx % 100 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                 epoch, batch_idx * len(data), len(train_loader.dataset),
                 100. * batch_idx / len(train_loader), loss.item()))
-            wandb.log({"train/epoch": epoch, "train/batch_idx": batch_idx, "train/loss": loss.item()})
+            wandb.log({"train/epoch": epoch, 
+                       "train/batch_idx": batch_idx, 
+                       "train/loss": loss.item(),
+                       "train/model_total_time": model_total_time,
+                       "train/optimizer_step_time": optimizer_step_time,
+                       "train/net_gpu_ratio": net_gpu_ratio
+                       })
     print('Epoch time: ', time.time_ns() - start)
 
 def rtest(model, test_loader):
@@ -467,19 +485,17 @@ def train_func(config: Dict):
     [transforms.ToTensor(),
      transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
 
-
-    trainset_shard = session.get_dataset_shard("train")
-    
+    # trainset_shard = session.get_dataset_shard("train")
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
                                             download=True, transform=transform)
     
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                            shuffle=True, num_workers=2)
+                                            shuffle=True, num_workers=4)
 
     testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                         download=True, transform=transform)
     test_loader = torch.utils.data.DataLoader(testset, batch_size=worker_batch_size,
-                                            shuffle=False, num_workers=2)
+                                            shuffle=False, num_workers=4)
 
     train_loader = train.torch.prepare_data_loader(train_loader)
     test_loader = train.torch.prepare_data_loader(test_loader)
@@ -537,21 +553,21 @@ def get_train_dataset():
 
 def train_resnet50_cifar(num_workers=4, use_gpu=True):
 
-    train_dataset: ray.data.Dataset = ray.data.read_datasource(
-        SimpleTorchDatasource(), dataset_factory=get_train_dataset
-    )
-    train_dataset = train_dataset.map_batches(convert_batch_to_numpy)
+    #train_dataset: ray.data.Dataset = ray.data.read_datasource(
+     #   SimpleTorchDatasource(), dataset_factory=get_train_dataset
+    #)
+    #train_dataset = train_dataset.map_batches(convert_batch_to_numpy)
     print("Batches Converted")
     scaling_config = ScalingConfig(num_workers=num_workers, use_gpu=use_gpu)
     trainer = TorchTrainer(
         train_loop_per_worker=train_func,
         train_loop_config={
-            "lr": 1e-3,
+            "lr": 1e-4,
             "batch_size": 128,
-            "epochs": 20
+            "epochs": 100
         },
         scaling_config=scaling_config,
-        datasets={"train": train_dataset},
+        #datasets={"train": train_dataset},
         run_config= RunConfig(
             callbacks=[]
             )

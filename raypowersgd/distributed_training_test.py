@@ -490,12 +490,12 @@ def train_func(config: Dict):
                                             download=True, transform=transform)
     
     train_loader = torch.utils.data.DataLoader(trainset, batch_size=batch_size,
-                                            shuffle=True, num_workers=4)
+                                            shuffle=True, num_workers=2)
 
     testset = torchvision.datasets.CIFAR10(root='./data', train=False,
                                         download=True, transform=transform)
     test_loader = torch.utils.data.DataLoader(testset, batch_size=worker_batch_size,
-                                            shuffle=False, num_workers=4)
+                                            shuffle=False, num_workers=2)
 
     train_loader = train.torch.prepare_data_loader(train_loader)
     test_loader = train.torch.prepare_data_loader(test_loader)
@@ -503,10 +503,8 @@ def train_func(config: Dict):
     classes = ('plane', 'car', 'bird', 'cat',
             'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-    resnet.model_urls["resnet50"] = "https://download.pytorch.org/models/resnet50-11ad3fa6.pth"
-
     # Initialize the model using the legacy API
-    model = resnet.resnet50(pretrained=True)
+    model = resnet.resnet50(pretrained=False)
     model = train.torch.prepare_model(model)
 
     params = model.parameters()
@@ -521,7 +519,7 @@ def train_func(config: Dict):
 
     accuracy_results = []
     os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"
-    wandb.init(project="powersgd-resnet-v2-trial-10")
+    wandb.init(project="iolaus/powersgd-resnet-v2-trial-10")
     for epoch in range(epochs):
         
         start_time = time.time_ns()

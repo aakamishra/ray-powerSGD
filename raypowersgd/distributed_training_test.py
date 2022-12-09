@@ -420,20 +420,20 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
     """
     for batch_idx, (image, label) in enumerate(train_loader):
         data, target = image, label
-        
+        optimizer.zero_grad()
         model_pass_start_time = time.time_ns()
         output = model(data)
         loss = criterion(output, target)
         model_total_time = time.time_ns() - model_pass_start_time
 
-        with model.no_sync():
-            loss.backward()
+        loss.backward()
         
         optimizer_step_start = time.time_ns()
-        optimizer_step(optimizer, powersgd)
+        #optimizer_step(optimizer, powersgd)
+        optimizer.step()
         optimizer_step_time = time.time_ns() - optimizer_step_start
         
-        net_gpu_ratio = wandb.run.summary["All Reduce Time"] / model_total_time
+        # net_gpu_ratio = wandb.run.summary["All Reduce Time"] / model_total_time
         
         if batch_idx % 100 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -444,7 +444,6 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
                        "train/loss": loss.item(),
                        "train/model_total_time": model_total_time,
                        "train/optimizer_step_time": optimizer_step_time,
-                       "train/net_gpu_ratio": net_gpu_ratio
                        })
     print('Epoch time: ', time.time_ns() - start)
 

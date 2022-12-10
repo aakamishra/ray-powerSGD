@@ -462,8 +462,7 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion, rankscale
                        "train/loss": loss.item(),
                        "train/model_total_time": model_total_time,
                        "train/optimizer_step_time": optimizer_step_time,
-                       "train/net_gpu_ratio": net_gpu_ratio,
-                       "train/rank": new_rank
+                       "train/net_gpu_ratio": net_gpu_ratio
                        })
     print('Epoch time: ', time.time_ns() - start)
 

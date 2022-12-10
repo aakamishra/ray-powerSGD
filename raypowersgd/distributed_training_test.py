@@ -509,7 +509,7 @@ def train_func(config: Dict):
     num_ftrs = model.fc.in_features
     # Here the size of each output sample is set to 2.
     # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
-    model.fc = nn.Linear(num_ftrs, 2)
+    model.fc = nn.Linear(num_ftrs, 10)
     model = train.torch.prepare_model(model)
 
     params = model.parameters()

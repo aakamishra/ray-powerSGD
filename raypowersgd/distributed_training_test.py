@@ -508,7 +508,7 @@ def train_func(config: Dict):
 
     params = model.parameters()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, nesterov=True)    
+    optimizer = optim.SGD(model.parameters(), lr=5e-5, momentum=0.9, nesterov=True)    
     powersgd = PowerSGD(list(params), config=Config(
         rank=2,  # lower rank => more aggressive compression
         min_compression_rate=10,  # don't compress gradients with less compression
@@ -559,7 +559,7 @@ def train_resnet50_cifar(num_workers=4, use_gpu=True):
     trainer = TorchTrainer(
         train_loop_per_worker=train_func,
         train_loop_config={
-            "lr": 1e-4,
+            "lr": 5e-5,
             "batch_size": 128,
             "epochs": 100
         },

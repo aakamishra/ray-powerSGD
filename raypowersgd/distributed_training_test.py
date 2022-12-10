@@ -408,7 +408,7 @@ def optimizer_step(optimizer: torch.optim.Optimizer, aggregator: Aggregator):
         p.grad = g
 
 
-def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion, scheduler):
+def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
     """
     Function for running gradient batched - compressed training cycle
     """
@@ -432,7 +432,6 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion, scheduler
         optimizer_step_start = time.time_ns()
         #optimizer_step(optimizer, powersgd)
         optimizer.step()
-        scheduler.step()
         optimizer_step_time = time.time_ns() - optimizer_step_start
         
         # net_gpu_ratio = wandb.run.summary["All Reduce Time"] / model_total_time
@@ -514,7 +513,7 @@ def train_func(config: Dict):
 
     params = model.parameters()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, nesterov=True)    
+    optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, nesterov=True)    
     powersgd = PowerSGD(list(params), config=Config(
         rank=2,  # lower rank => more aggressive compression
         min_compression_rate=10,  # don't compress gradients with less compression
@@ -522,7 +521,6 @@ def train_func(config: Dict):
         start_compressing_after_num_steps=0,
     ))
     
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     
     accuracy_results = []
     os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"
@@ -530,7 +528,7 @@ def train_func(config: Dict):
     for epoch in range(epochs):
         
         start_time = time.time_ns()
-        rtrain(model, train_loader, optimizer, powersgd, epoch, criterion, scheduler)
+        rtrain(model, train_loader, optimizer, powersgd, epoch, criterion)
         stop_time = time.time_ns() - start_time
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
@@ -567,7 +565,7 @@ def train_resnet50_cifar(num_workers=4, use_gpu=True):
     trainer = TorchTrainer(
         train_loop_per_worker=train_func,
         train_loop_config={
-            "lr": 0.001,
+            "lr": 1e-4,
             "batch_size": 128,
             "epochs": 100
         },

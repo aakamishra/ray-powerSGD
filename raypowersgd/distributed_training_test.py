@@ -448,9 +448,9 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion, rankscale
         
         net_gpu_ratio = optimizer_step_time / model_total_time
         
-        #new_rank = rankscaler.determine_next_rank(net_gpu_ratio)
-        #powersgd.config.rank = new_rank
-        #powersgd._powersgd.config.rank = new_rank
+        new_rank = rankscaler.determine_next_rank(net_gpu_ratio)
+        powersgd.config.rank = new_rank
+        powersgd._powersgd.config.rank = new_rank
         
         
         if batch_idx % 100 == 0:

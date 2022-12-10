@@ -504,7 +504,11 @@ def train_func(config: Dict):
             'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
     # Initialize the model using the legacy API
-    model = resnet.resnet50(pretrained=False)
+    model = resnet.resnet50(pretrained=True)
+    num_ftrs = model.fc.in_features
+    # Here the size of each output sample is set to 2.
+    # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
+    model.fc = nn.Linear(num_ftrs, 10)
     model = train.torch.prepare_model(model)
 
     params = model.parameters()

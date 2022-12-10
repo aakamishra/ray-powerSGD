@@ -505,12 +505,16 @@ def train_func(config: Dict):
             'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
     # Initialize the model using the legacy API
-    model = resnet.resnet50(pretrained=False)
+    model = resnet.resnet50(pretrained=True)
+    num_ftrs = model.fc.in_features
+    # Here the size of each output sample is set to 2.
+    # Alternatively, it can be generalized to nn.Linear(num_ftrs, len(class_names)).
+    model.fc = nn.Linear(num_ftrs, 2)
     model = train.torch.prepare_model(model)
 
     params = model.parameters()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, nesterov=True)    
+    optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, nesterov=True)    
     powersgd = PowerSGD(list(params), config=Config(
         rank=2,  # lower rank => more aggressive compression
         min_compression_rate=10,  # don't compress gradients with less compression
@@ -518,7 +522,7 @@ def train_func(config: Dict):
         start_compressing_after_num_steps=0,
     ))
     
-    scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
     
     accuracy_results = []
     os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"

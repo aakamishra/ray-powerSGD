@@ -32,9 +32,22 @@ from types import SimpleNamespace
 import torch
 
 
+class RankScaler:
+    def __init__(self, preference_scale=None, deviation=5):
+        if preference_scale:
+            self.preference_scale = preference_scale
+        else:
+            self.preference_scale = {20:3, 30:2, 40:1}
+        self.deviation = deviation
+    
+    def determine_next_rank(self, ratio):
+        for key in self.preference_scale:
+            if ratio <= (key + self.deviation) and (key - self.deviation) < ratio:
+                return self.preference_scale[key]
+
+
 """243 Group implementation of PowerSGD"""
 # Original code implementation can be found here: https://github.com/epfml/powersgd
-
 
 
 ############################# UTLITIES ###################################
@@ -407,7 +420,7 @@ def optimizer_step(optimizer: torch.optim.Optimizer, aggregator: Aggregator):
         p.grad = g
 
 
-def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
+def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion, rankscaler):
     """
     Function for running gradient batched - compressed training cycle
     """
@@ -433,7 +446,12 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
         optimizer_step(optimizer, powersgd)
         optimizer_step_time = time.time_ns() - optimizer_step_start
         
-        net_gpu_ratio = wandb.run.summary["All Reduce Time"] / model_total_time
+        net_gpu_ratio = optimizer_step_time / model_total_time
+        
+        new_rank = rankscaler.determine_next_rank(net_gpu_ratio)
+        powersgd.config.rank = new_rank
+        powersgd._powersgd.config.rank = new_rank
+        
         
         if batch_idx % 100 == 0:
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
@@ -444,7 +462,8 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
                        "train/loss": loss.item(),
                        "train/model_total_time": model_total_time,
                        "train/optimizer_step_time": optimizer_step_time,
-                       "train/net_gpu_ratio": net_gpu_ratio
+                       "train/net_gpu_ratio": net_gpu_ratio,
+                       "train/rank": new_rank
                        })
     print('Epoch time: ', time.time_ns() - start)
 
@@ -513,6 +532,7 @@ def train_func(config: Dict):
 
     params = model.parameters()
     criterion = nn.CrossEntropyLoss()
+    rankscaler = RankScaler()
     optimizer = optim.SGD(model.parameters(), lr=1e-4, momentum=0.9, nesterov=True)    
     powersgd = PowerSGD(list(params), config=Config(
         rank=2,  # lower rank => more aggressive compression
@@ -527,7 +547,7 @@ def train_func(config: Dict):
     for epoch in range(epochs):
         
         start_time = time.time_ns()
-        rtrain(model, train_loader, optimizer, powersgd, epoch, criterion)
+        rtrain(model, train_loader, optimizer, powersgd, epoch, criterion, rankscaler)
         stop_time = time.time_ns() - start_time
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())

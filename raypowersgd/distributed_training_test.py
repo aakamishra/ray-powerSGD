@@ -23,6 +23,7 @@ from ray.air import session, Checkpoint
 import time
 import numpy as np
 import ray
+from torch.optim import lr_scheduler
 
 
 from abc import ABC, abstractmethod
@@ -407,7 +408,7 @@ def optimizer_step(optimizer: torch.optim.Optimizer, aggregator: Aggregator):
         p.grad = g
 
 
-def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
+def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion, scheduler):
     """
     Function for running gradient batched - compressed training cycle
     """
@@ -431,6 +432,7 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion):
         optimizer_step_start = time.time_ns()
         #optimizer_step(optimizer, powersgd)
         optimizer.step()
+        scheduler.step()
         optimizer_step_time = time.time_ns() - optimizer_step_start
         
         # net_gpu_ratio = wandb.run.summary["All Reduce Time"] / model_total_time
@@ -515,14 +517,16 @@ def train_func(config: Dict):
         num_iters_per_step=2,  #   # lower number => more aggressive compression
         start_compressing_after_num_steps=0,
     ))
-
+    
+    scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+    
     accuracy_results = []
     os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"
-    wandb.init(project="iolaus/powersgd-resnet-v2-trial-10")
+    wandb.init(project="powersgd-resnet-v2-trial-14-10gbps-nopowersgd")
     for epoch in range(epochs):
         
         start_time = time.time_ns()
-        rtrain(model, train_loader, optimizer, powersgd, epoch, criterion)
+        rtrain(model, train_loader, optimizer, powersgd, epoch, criterion, scheduler)
         stop_time = time.time_ns() - start_time
         accuracy = rtest(model, test_loader)
         checkpoint = TorchCheckpoint.from_state_dict(model.module.state_dict())
@@ -559,7 +563,7 @@ def train_resnet50_cifar(num_workers=4, use_gpu=True):
     trainer = TorchTrainer(
         train_loop_per_worker=train_func,
         train_loop_config={
-            "lr": 5e-5,
+            "lr": 1e-4,
             "batch_size": 128,
             "epochs": 100
         },

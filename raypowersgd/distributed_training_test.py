@@ -514,7 +514,7 @@ def train_func(config: Dict):
 
     params = model.parameters()
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, nesterov=True)    
+    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9, nesterov=True)    
     powersgd = PowerSGD(list(params), config=Config(
         rank=2,  # lower rank => more aggressive compression
         min_compression_rate=10,  # don't compress gradients with less compression

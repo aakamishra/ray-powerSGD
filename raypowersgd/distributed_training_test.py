@@ -37,13 +37,14 @@ class RankScaler:
         if preference_scale:
             self.preference_scale = preference_scale
         else:
-            self.preference_scale = {20:3, 30:2, 40:1}
+            self.preference_scale = {20:2, 30:1, 40:1}
         self.deviation = deviation
     
     def determine_next_rank(self, ratio):
         for key in self.preference_scale:
             if ratio <= (key + self.deviation) and (key - self.deviation) < ratio:
                 return self.preference_scale[key]
+        return 3
 
 
 """243 Group implementation of PowerSGD"""
@@ -449,8 +450,8 @@ def rtrain(model, train_loader, optimizer, powersgd, epoch, criterion, rankscale
         net_gpu_ratio = optimizer_step_time / model_total_time
         
         new_rank = rankscaler.determine_next_rank(net_gpu_ratio)
-        powersgd.config.rank = new_rank
-        powersgd._powersgd.config.rank = new_rank
+        powersgd.config = powersgd.config._replace(rank = new_rank)
+        powersgd._powersgd.config = powersgd._powersgd.config._replace(rank = new_rank)
         
         
         if batch_idx % 100 == 0:
@@ -543,7 +544,7 @@ def train_func(config: Dict):
 
     accuracy_results = []
     os.environ["WANDB_API_KEY"] = "8f7086db96f9edfde9aae91cfcf98f1f445333f5"
-    wandb.init(project="iolaus/powersgd-resnet-v2-trial-10")
+    wandb.init(project="powersgd-resnet-v2-trial-30-dynamic-33510")
     for epoch in range(epochs):
         
         start_time = time.time_ns()

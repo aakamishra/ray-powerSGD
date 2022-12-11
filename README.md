@@ -3,6 +3,8 @@
 
 Aakash Mishra, Matt Fu, Chris Zhu
 
+Contact: aakamishra1@gmail.com, amishra@college.harvard.edu
+
 ![Ray Project](figures/ray-logo.png)
 
 
@@ -65,7 +67,7 @@ Each file takes in the number of workers to be used as an argument and whether o
 
 ## Mix-Bandwith Tests
 
-![Setup](figures/ray-logo.png)
+![Setup](figures/config.png)
 
 
 - 5, 5, 10, 10 Gbits/s
@@ -102,3 +104,10 @@ For our network setup, we use Wondershaper to set and test bandwdths for instanc
 
 `./wondershaper -u <rate>`
 
+# Results
+
+![Results](visualization/DynamicCompressionResNet50PowerSGDPlot.jpg)
+
+![Results](visualization/ResNet50PowerSGDPlot.jpg)
+
+![Results](visualization/ResNet101PowerSGDPlot.jpg)

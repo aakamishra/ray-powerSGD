@@ -3,11 +3,32 @@ from collections import defaultdict
 from typing import Dict, List, Tuple, NamedTuple, Union
 from types import SimpleNamespace
 import torch
-
+import wandb
+import time
 
 """243 Group implementation of PowerSGD"""
 # Original code implementation can be found here: https://github.com/epfml/powersgd
 
+
+
+############################# UTLITIES ###################################
+
+class RankScaler:
+    def __init__(self, preference_scale=None, deviation=5):
+        if preference_scale:
+            self.preference_scale = preference_scale
+        else:
+            self.preference_scale = {20:3, 30:2, 40:1}
+        self.deviation = deviation
+    
+    def determine_next_rank(self, ratio):
+        for key in self.preference_scale:
+            if ratio <= (key + self.deviation) and (key - self.deviation) < ratio:
+                return self.preference_scale[key]
+
+
+"""243 Group implementation of PowerSGD"""
+# Original code implementation can be found here: https://github.com/epfml/powersgd
 
 
 ############################# UTLITIES ###################################
@@ -62,8 +83,12 @@ def allreduce_average(data, *args, **kwargs):
     """All-reduce average if torch.distributed is available, otherwise do nothing"""
     if is_distributed():
         data.div_(torch.distributed.get_world_size())  # type: ignore
-        #print("pytorch world size: ", torch.distributed.get_world_size())
-        return torch.distributed.all_reduce(data, *args, **kwargs)  # type: ignore
+        #print("pytorch world size: ", torch.distributed.get_world_size())        
+        start_time = time.time_ns()
+        ret = torch.distributed.all_reduce(data, *args, **kwargs)  # type: ignore
+        wandb.log({"Communication Bits": 8 * data.nelement() * data.element_size(), "All Reduce Time": time.time_ns() - start_time})
+        return ret
+        
     else:
         return SimpleNamespace(wait=lambda: None)
 
@@ -374,8 +399,6 @@ def optimizer_step(optimizer: torch.optim.Optimizer, aggregator: Aggregator):
     # Put back the error buffer as the parameter's gradient
     for (p, g) in zip(params, grads):
         p.grad = g
-
-
 
 
 

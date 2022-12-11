@@ -16,7 +16,7 @@ Assuming you want to use 4 nodes, raypowersgd/cluster.yml is mostly defaulted to
 1) In your terminal, type ray up cluster.yml
 2) Copy the line: ray exec (Your cluster.yml path) 'tail -n 100 -f /tmp/ray/session_latest/logs/monitor*
 3) In a separate shell, paste it. Once your usage shows 0.0/16.0 CPU (assuming you use our default settings), all nodes have initialized and you can run experiments. 
-4) If you want to recreat our experiments exactly, you need to launch each instance in AWS and network bandwidth limit each instance. Use the Linux tc command or the ip link command (should be automically installed for you by us) to limit the bandwidth. 
+4) If you want to recreate our experiments exactly, you need to launch each instance in AWS and network bandwidth limit each instance. Use the Linux tc command or the ip link command (should be automically installed for you by us) to limit the bandwidth. 
 5) In your original terminal, type ray attach cluster.yml
 6) Download vim (sudo apt update -> sudo apt install vim)
 7) Enter into the distributed_trianing_test.py file. You will need to change the following:

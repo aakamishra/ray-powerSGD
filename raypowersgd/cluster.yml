@@ -135,6 +135,7 @@ setup_commands:
     - pip install cupy-cuda113
     - pip install torch==1.10.2+cu113 torchvision==0.11.3+cu113 torchaudio==0.10.2 --extra-index-url https://download.pytorch.org/whl/cu113
     - sudo apt install -y net-tools
+    - sudo apt install -y iproute2
     - git clone https://github.com/aakamishra/ray-powerSGD.git
 
     # - pip install -U "ray[default] @ https://s3-us-west-2.amazonaws.com/ray-wheels/latest/ray-3.0.0.dev0-cp37-cp37m-manylinux2014_x86_64.whl"
@@ -149,7 +150,7 @@ worker_setup_commands: []
 # Command to start ray on the head node. You don't need to change this.
 head_start_ray_commands:
     - ray stop
-    - ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml --node-ip-address=172.31.15.78
+    - ulimit -n 65536; ray start --head --port=6379 --object-manager-port=8076 --autoscaling-config=~/ray_bootstrap_config.yaml --node-ip-address=172.31.18.91
 
 # Command to start ray on worker nodes. You don't need to change this.
 worker_start_ray_commands:

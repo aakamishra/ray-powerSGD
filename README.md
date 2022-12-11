@@ -40,7 +40,7 @@ Note that in our code base the cluster.yml files and corresponding key files are
 
 When the terminal launches, it will open an instance into the head of the newly created ray cluster. From that point you can switch into the deployment directory.
 
-`cd /deployment-scripts`
+`cd /raypowersgd/deployment-scripts`
 
 Then you can run the following depending on the experiment of your choice.
 

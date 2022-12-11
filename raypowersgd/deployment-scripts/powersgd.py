@@ -33,6 +33,7 @@ class RankScaler:
 
 ############################# UTLITIES ###################################
 
+# orthognalize the matrix
 def orthogonalize(matrix: torch.Tensor, eps=torch.tensor(1e-16)):
     if matrix.shape[-1] == 1:
         matrix.div_(torch.maximum(matrix.norm(), eps))
@@ -46,7 +47,6 @@ def pack(tensors: List[torch.Tensor]) -> Tuple[torch.Tensor, List[torch.Size]]:
     shapes = [tensor.shape for tensor in tensors]
     return buffer, shapes
 
-
 def unpack(buffer: torch.Tensor, shapes: List[torch.Size]) -> List[torch.Tensor]:
     """Provides pointers to tensors of original `shapes` in a flat-packed buffer."""
     idx = 0
@@ -58,18 +58,18 @@ def unpack(buffer: torch.Tensor, shapes: List[torch.Size]) -> List[torch.Tensor]
 
     return entries
 
-
+# Returns the parameters in an optimizer
 def params_in_optimizer(optimizer: torch.optim.Optimizer) -> List[torch.Tensor]:
     params = []
     for group in optimizer.param_groups:
         params.extend(group["params"])
     return params
 
-
+# is_distributed is a function that checks if torch.distributed is available
 def is_distributed() -> bool:
     return torch.distributed.is_available() and torch.distributed.is_initialized()  # type: ignore
 
-
+# Flatten for PowerSGD
 def flatten(tensors: List[List[torch.Tensor]]) -> List[torch.Tensor]:
     out = []
     for list in tensors:
@@ -83,7 +83,6 @@ def allreduce_average(data, *args, **kwargs):
     """All-reduce average if torch.distributed is available, otherwise do nothing"""
     if is_distributed():
         data.div_(torch.distributed.get_world_size())  # type: ignore
-        #print("pytorch world size: ", torch.distributed.get_world_size())        
         start_time = time.time_ns()
         ret = torch.distributed.all_reduce(data, *args, **kwargs)  # type: ignore
         wandb.log({"Communication Bits": 8 * data.nelement() * data.element_size(), "All Reduce Time": time.time_ns() - start_time})
@@ -104,6 +103,7 @@ class Aggregator(ABC):
 
 
 class AllReduce(Aggregator):
+    """Aggregator for all reduce"""
     def aggregate(self, gradients: List[torch.Tensor]) -> List[torch.Tensor]:
         if len(gradients) == 0:
             return []
@@ -114,7 +114,7 @@ class AllReduce(Aggregator):
             g.zero_()
         return out
 
-
+# Our configuration for PowerSGD
 class Config(NamedTuple):
     rank: int  # lower rank => more aggressive compression
     min_compression_rate: float = 2  # skip compression on some gradients
@@ -148,6 +148,7 @@ class PowerSGD(Aggregator):
         )
         self._allreduce = AllReduce()
 
+    # Aggregate the gradients
     def aggregate(self, gradients: List[torch.Tensor]) -> List[torch.Tensor]:
         self.step_counter += 1
 
@@ -160,6 +161,7 @@ class PowerSGD(Aggregator):
             self._allreduce.aggregate(uncompressed_grads),
         )
 
+    # Split the gradients into compressed and uncompressed
     def _split(self, params: List[torch.Tensor]):
         compressed_params = []
         uncompressed_params = []
@@ -170,6 +172,7 @@ class PowerSGD(Aggregator):
                 uncompressed_params.append(param)
         return compressed_params, uncompressed_params
 
+    # Merge the gradients
     def _merge(
         self, compressed: List[torch.Tensor], uncompressed: List[torch.Tensor]
     ) -> List[torch.Tensor]:
@@ -185,19 +188,22 @@ class PowerSGD(Aggregator):
 
         return merged_list
 
+    # Check if we should compress the gradient
     def _should_compress(self, shape: torch.Size) -> bool:
         return (
             shape.numel() / avg_compressed_size(shape, self.config)
             > self.config.min_compression_rate
         )
 
-
+# A basic configuration for PowerSGD
 class BasicConfig(NamedTuple):
     rank: int  # lower rank => more aggressive compression
     num_iters_per_step: int = 1  # lower number => more aggressive compression
 
-
 class BasicPowerSGD(Aggregator):
+    """
+    Applies a basic version of PowerSGD.
+    """
     def __init__(self, params: List[torch.Tensor], config: BasicConfig):
         # Configuration
         self.config = config
